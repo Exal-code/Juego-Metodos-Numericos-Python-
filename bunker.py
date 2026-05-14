@@ -21,7 +21,7 @@ from config import (
     PLAYER_HAIR, PLAYER_BACKPACK,
 )
 from entities import TextInput
-from problems import get_random_problems, check_answer
+from problems import get_bunker_problems, check_field_answer, check_all_fields
 
 
 # ============================================
@@ -37,32 +37,38 @@ class ProblemModal:
         self.problem = problem
         self.time_remaining = time_seconds
         self.time_total = time_seconds
-        self.books = books_collected  # dict {color: count}
+        self.books = books_collected
         self.sound_manager = sound_manager
 
         # Estado
         self.paused = False
         self.finished = False
-        self.result = None  # "correct", "wrong", "timeout"
-        self.show_hint = None  # Color del libro cuya pista se muestra
+        self.result = None
+        self.show_hint = None
 
-        # UI
-        self.text_input = TextInput(
-            SCREEN_WIDTH // 2 - 140,
-            SCREEN_HEIGHT // 2 + 10,
-            280, 40
-        )
+        # Múltiples campos de respuesta
+        self.fields = problem.get("fields", [])
+        self.text_inputs = []
+        self.active_field = 0
+        for i, field in enumerate(self.fields):
+            ti = TextInput(0, 0, 200, 30, font_size=18)
+            ti.active = (i == 0)
+            self.text_inputs.append(ti)
+        # Fallback si no hay fields
+        if not self.text_inputs:
+            self.text_inputs = [TextInput(0, 0, 280, 40)]
 
         # Fuentes
         self.font_title = pygame.font.SysFont("Arial", 20, bold=True)
-        self.font_text = pygame.font.SysFont("Arial", 17)
+        self.font_text = pygame.font.SysFont("Arial", 15)
+        self.font_label = pygame.font.SysFont("Arial", 14, bold=True)
         self.font_timer = pygame.font.SysFont("Consolas", 28, bold=True)
         self.font_button = pygame.font.SysFont("Arial", 16, bold=True)
         self.font_hint = pygame.font.SysFont("Arial", 15)
         self.font_small = pygame.font.SysFont("Arial", 13)
 
         # Geometría del modal
-        self.modal_rect = pygame.Rect(60, 60, SCREEN_WIDTH - 120, SCREEN_HEIGHT - 120)
+        self.modal_rect = pygame.Rect(40, 30, SCREEN_WIDTH - 80, SCREEN_HEIGHT - 60)
 
         # Mensaje de resultado
         self.result_message = ""
@@ -70,17 +76,12 @@ class ProblemModal:
         self.show_result = False
 
     def update(self, events, dt):
-        """
-        Actualiza la lógica del modal.
-        Retorna "correct", "wrong", "timeout" cuando termina, o None.
-        """
         if self.show_result:
             self.result_timer -= dt
             if self.result_timer <= 0:
                 return self.result
             return None
 
-        # Actualizar timer (si no está en pausa)
         if not self.paused:
             self.time_remaining -= dt
             if self.time_remaining <= 0:
@@ -88,27 +89,38 @@ class ProblemModal:
                 self._set_result("timeout", "⏱ ¡Se acabó el tiempo!")
                 return None
 
-        # Actualizar campo de texto
-        self.text_input.update(dt)
+        # Actualizar campo activo
+        if self.active_field < len(self.text_inputs):
+            self.text_inputs[self.active_field].update(dt)
 
-        # Procesar eventos
         for event in events:
             if event.type == pygame.MOUSEBUTTONDOWN:
                 mouse = pygame.mouse.get_pos()
                 self._handle_click(mouse)
 
             if event.type == pygame.KEYDOWN:
-                result = self.text_input.handle_event(event)
-                if result == "submit":
+                if event.key == pygame.K_TAB:
+                    # Cambiar al siguiente campo
+                    self._switch_field((self.active_field + 1) % len(self.text_inputs))
+                elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
                     self._submit_answer()
+                else:
+                    if self.active_field < len(self.text_inputs):
+                        self.text_inputs[self.active_field].handle_event(event)
 
         return None
+
+    def _switch_field(self, idx):
+        """Cambia el campo activo."""
+        for i, ti in enumerate(self.text_inputs):
+            ti.active = (i == idx)
+        self.active_field = idx
 
     def _handle_click(self, mouse):
         """Procesa clics del mouse en el modal."""
         # Botón Entregar
         btn_submit = pygame.Rect(self.modal_rect.centerx - 70,
-                                  self.modal_rect.bottom - 65, 140, 38)
+                                  self.modal_rect.bottom - 55, 140, 38)
         if btn_submit.collidepoint(mouse):
             self.sound_manager.play("select")
             self._submit_answer()
@@ -122,7 +134,13 @@ class ProblemModal:
             self.paused = not self.paused
             return
 
-        # Clic en libros (pistas) - lado izquierdo
+        # Clic en campos de texto
+        for i, ti in enumerate(self.text_inputs):
+            if ti.rect.collidepoint(mouse):
+                self._switch_field(i)
+                return
+
+        # Clic en libros (pistas)
         book_y = self.modal_rect.top + 90
         color_order = ["green", "red", "blue", "purple"]
         for i, color in enumerate(color_order):
@@ -135,20 +153,21 @@ class ProblemModal:
                     return
 
     def _submit_answer(self):
-        """Envía la respuesta del jugador."""
+        """Envía las respuestas del jugador (todos los campos)."""
         if self.show_result:
             return
 
-        user_val = self.text_input.get_numeric_value()
+        user_answers = [ti.get_value() for ti in self.text_inputs]
 
-        if user_val is None and self.text_input.get_value() == "":
-            # Campo vacío = error
+        # Verificar si todos están vacíos
+        if all(a == "" for a in user_answers):
             self._set_result("wrong", "❌ No ingresaste una respuesta")
-        elif check_answer(self.problem, user_val):
+            return
+
+        if check_all_fields(self.problem, user_answers):
             self._set_result("correct", "✅ ¡Respuesta correcta!")
         else:
-            expected = self.problem["answer"]
-            self._set_result("wrong", f"❌ Incorrecto. Respuesta: {expected}")
+            self._set_result("wrong", "❌ Incorrecto")
 
     def _set_result(self, result, message):
         """Establece el resultado y muestra el mensaje."""
@@ -164,22 +183,23 @@ class ProblemModal:
 
     def draw(self, surface):
         """Dibuja el modal de problema completo."""
-        # Overlay oscuro detrás del modal
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 150))
         surface.blit(overlay, (0, 0))
 
         mr = self.modal_rect
+        mouse = pygame.mouse.get_pos()
 
         # Fondo del modal
         pygame.draw.rect(surface, MODAL_BG, mr, border_radius=10)
         pygame.draw.rect(surface, MODAL_BORDER, mr, 2, border_radius=10)
 
-        # Header
+        # Header con nombre del método
         header = pygame.Rect(mr.left, mr.top, mr.width, 40)
         pygame.draw.rect(surface, MODAL_HEADER, header,
                          border_top_left_radius=10, border_top_right_radius=10)
-        title = self.font_title.render(f"📝 Día - Problema", True, WHITE)
+        topic = self.problem.get("topic", "Problema")
+        title = self.font_title.render(f"📝 Método: {topic}", True, WHITE)
         surface.blit(title, (mr.left + 15, mr.top + 10))
 
         # Timer
@@ -191,7 +211,6 @@ class ProblemModal:
 
         # Botón Pausa
         btn_pause = pygame.Rect(mr.right - 100, mr.top + 45, 80, 30)
-        mouse = pygame.mouse.get_pos()
         pause_hover = btn_pause.collidepoint(mouse)
         p_color = BUTTON_GRAY_HOVER if pause_hover else BUTTON_GRAY
         pygame.draw.rect(surface, p_color, btn_pause, border_radius=5)
@@ -214,46 +233,37 @@ class ProblemModal:
             if count > 0:
                 by = books_y + book_idx * 55
                 book_rect = pygame.Rect(books_x + 5, by, 95, 45)
-
-                # Fondo del libro
                 is_selected = self.show_hint == color
                 bg_color = (70, 70, 85) if is_selected else (50, 50, 65)
                 pygame.draw.rect(surface, bg_color, book_rect, border_radius=5)
                 pygame.draw.rect(surface, BOOK_COLORS[color], book_rect, 2, border_radius=5)
-
-                # Icono
                 icon = pygame.Rect(books_x + 10, by + 8, 18, 25)
                 pygame.draw.rect(surface, BOOK_COLORS[color], icon, border_radius=2)
-
-                # Texto
                 name = self.font_small.render(f"{color_names[color]} x{count}", True, WHITE)
                 surface.blit(name, (books_x + 33, by + 14))
-
                 book_idx += 1
 
-        # Mostrar pista si está seleccionada
+        # Mostrar pista
         if self.show_hint and self.show_hint in self.problem.get("hints", {}):
             hint_text = self.problem["hints"][self.show_hint]
             hint_y = books_y + book_idx * 55 + 10
-            # Fondo de pista
             hint_rect = pygame.Rect(books_x, hint_y, 110, 60)
             pygame.draw.rect(surface, (60, 60, 75), hint_rect, border_radius=5)
             pygame.draw.rect(surface, BOOK_COLORS[self.show_hint], hint_rect, 1, border_radius=5)
-            # Texto (word wrap manual)
             words = hint_text.split()
-            lines = []
-            current = ""
+            lines_h = []
+            current_h = ""
             for word in words:
-                test = current + " " + word if current else word
+                test = current_h + " " + word if current_h else word
                 if self.font_small.size(test)[0] < 100:
-                    current = test
+                    current_h = test
                 else:
-                    if current:
-                        lines.append(current)
-                    current = word
-            if current:
-                lines.append(current)
-            for i, line in enumerate(lines[:5]):
+                    if current_h:
+                        lines_h.append(current_h)
+                    current_h = word
+            if current_h:
+                lines_h.append(current_h)
+            for i, line in enumerate(lines_h[:5]):
                 lt = self.font_small.render(line, True, (220, 220, 240))
                 surface.blit(lt, (books_x + 5, hint_y + 5 + i * 14))
 
@@ -261,41 +271,107 @@ class ProblemModal:
         content_x = mr.left + 130
         content_w = mr.width - 150
 
-        # Enunciado del problema
-        problem_y = mr.top + 80
-        # Word wrap para el enunciado
+        # Enunciado del problema (soporta \n)
+        problem_y = mr.top + 55
         problem_text = self.problem["text"]
-        words = problem_text.split()
-        lines = []
-        current = ""
-        for word in words:
-            test = current + " " + word if current else word
-            if self.font_text.size(test)[0] < content_w - 20:
-                current = test
-            else:
-                if current:
-                    lines.append(current)
-                current = word
-        if current:
-            lines.append(current)
+        raw_lines = problem_text.split("\n")
+        all_lines = []
+        for raw_line in raw_lines:
+            if raw_line.strip() == "":
+                all_lines.append("")
+                continue
+            words = raw_line.split()
+            current_l = ""
+            for word in words:
+                test = current_l + " " + word if current_l else word
+                if self.font_text.size(test)[0] < content_w - 20:
+                    current_l = test
+                else:
+                    if current_l:
+                        all_lines.append(current_l)
+                    current_l = word
+            if current_l:
+                all_lines.append(current_l)
 
-        for i, line in enumerate(lines):
+        for i, line in enumerate(all_lines):
+            if line == "":
+                continue
             lt = self.font_text.render(line, True, WHITE)
-            surface.blit(lt, (content_x + 10, problem_y + i * 24))
+            surface.blit(lt, (content_x + 10, problem_y + i * 20))
 
-        # Etiqueta "Tu respuesta:"
-        answer_label_y = mr.centery - 25
-        al = self.font_text.render("Tu respuesta:", True, LIGHT_GRAY)
-        surface.blit(al, (content_x + 10, answer_label_y))
+        # --- Campos de respuesta ---
+        num_fields = len(self.fields)
+        fields_start_y = problem_y + len(all_lines) * 20 + 15
 
-        # Campo de texto (reposicionarlo)
-        self.text_input.rect.x = content_x + 10
-        self.text_input.rect.y = answer_label_y + 30
-        self.text_input.rect.width = min(280, content_w - 30)
-        self.text_input.draw(surface)
+        if num_fields <= 2:
+            # Layout simple: campos en columna
+            for i, field in enumerate(self.fields):
+                fy = fields_start_y + i * 45
+                lbl = self.font_label.render(field["label"], True, (255, 215, 0))
+                surface.blit(lbl, (content_x + 10, fy))
+                lbl_w = lbl.get_width() + 5
+                self.text_inputs[i].rect.x = content_x + 10 + lbl_w
+                self.text_inputs[i].rect.y = fy - 3
+                self.text_inputs[i].rect.width = min(200, content_w - lbl_w - 30)
+                self.text_inputs[i].rect.height = 28
+                self.text_inputs[i].draw(surface)
+        elif num_fields == 7:
+            # Layout para 7 campos: primeros 4 arriba, 3 errores abajo
+            col_w = (content_w - 20) // 2
+            for i in range(4):
+                row = i // 2
+                col = i % 2
+                fx = content_x + 10 + col * col_w
+                fy = fields_start_y + row * 45
+                lbl = self.font_label.render(self.fields[i]["label"], True, (255, 215, 0))
+                surface.blit(lbl, (fx, fy))
+                lbl_w = lbl.get_width() + 3
+                inp_w = max(60, col_w - lbl_w - 10)
+                self.text_inputs[i].rect.x = fx + lbl_w
+                self.text_inputs[i].rect.y = fy - 3
+                self.text_inputs[i].rect.width = inp_w
+                self.text_inputs[i].rect.height = 28
+                self.text_inputs[i].draw(surface)
+
+            # Separador
+            sep_y = fields_start_y + 95
+            pygame.draw.line(surface, LIGHT_GRAY,
+                             (content_x + 10, sep_y), (content_x + content_w - 20, sep_y), 1)
+            err_label = self.font_small.render("Márgenes de Error:", True, LIGHT_GRAY)
+            surface.blit(err_label, (content_x + 10, sep_y + 3))
+
+            # 3 campos de error debajo
+            err_col_w = (content_w - 20) // 2
+            for j in range(3):
+                idx = 4 + j
+                row = j // 2
+                col = j % 2
+                fx = content_x + 10 + col * err_col_w
+                fy = sep_y + 22 + row * 45
+                lbl = self.font_label.render(self.fields[idx]["label"], True, (255, 200, 100))
+                surface.blit(lbl, (fx, fy))
+                lbl_w = lbl.get_width() + 3
+                inp_w = max(60, err_col_w - lbl_w - 10)
+                self.text_inputs[idx].rect.x = fx + lbl_w
+                self.text_inputs[idx].rect.y = fy - 3
+                self.text_inputs[idx].rect.width = inp_w
+                self.text_inputs[idx].rect.height = 28
+                self.text_inputs[idx].draw(surface)
+        else:
+            # Layout genérico
+            for i, field in enumerate(self.fields):
+                fy = fields_start_y + i * 38
+                lbl = self.font_label.render(field["label"], True, (255, 215, 0))
+                surface.blit(lbl, (content_x + 10, fy))
+                lbl_w = lbl.get_width() + 5
+                self.text_inputs[i].rect.x = content_x + 10 + lbl_w
+                self.text_inputs[i].rect.y = fy - 3
+                self.text_inputs[i].rect.width = min(180, content_w - lbl_w - 30)
+                self.text_inputs[i].rect.height = 28
+                self.text_inputs[i].draw(surface)
 
         # Botón Entregar
-        btn_submit = pygame.Rect(mr.centerx - 70, mr.bottom - 65, 140, 38)
+        btn_submit = pygame.Rect(mr.centerx - 70, mr.bottom - 55, 140, 38)
         s_hover = btn_submit.collidepoint(mouse)
         s_color = BUTTON_GREEN_HOVER if s_hover else BUTTON_GREEN
         pygame.draw.rect(surface, s_color, btn_submit, border_radius=8)
@@ -350,7 +426,7 @@ class BunkerPhase:
         self.days_completed = 0
 
         # Problemas aleatorios (4 para los 4 días)
-        self.problems = get_random_problems(4)
+        self.problems = get_bunker_problems()
 
         # Suministros (10 de cada uno, -2 por día)
         self.water = 10

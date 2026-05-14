@@ -1,150 +1,301 @@
 # ============================================
-# problems.py - Problemas matemáticos del búnker
+# problems.py - Problemas de Métodos Numéricos del búnker
 # ============================================
-# Por ahora: sumas y restas simples.
-# Luego se reemplazarán con problemas de Métodos Numéricos.
+# Día 1: Interpolación (Lineal o Lagrange)
+# Día 2: Ecuaciones No Lineales (Punto Fijo o Falsa Posición)
+# Día 3: Ecuaciones Lineales (Gauss-Seidel o Jacobi) — aleatorio
+# Día 4: Ecuaciones Lineales (el método que NO se eligió en el día 3)
 
 import random
 
-# Cada problema: (enunciado, respuesta_correcta, pista_por_color)
-# pista_por_color: {color: texto_pista}
 
-PROBLEMS = [
-    {
-        "text": "¿Cuánto es 147 + 285?",
-        "answer": 432,
-        "tolerance": 0.01,
-        "hints": {
-            "green":  "Pista: Suma las unidades primero (7+5=12)",
-            "red":    "Pista: Lleva 1 a las decenas",
-            "blue":   "Pista: 147 + 285 = 147 + 300 - 15",
-            "purple": "Pista: Descompón: 100+200=300, 47+85=132",
-        }
-    },
-    {
-        "text": "¿Cuánto es 523 - 187?",
-        "answer": 336,
-        "tolerance": 0.01,
-        "hints": {
-            "green":  "Pista: Resta por partes: 523-200+13",
-            "red":    "Pista: 523 - 187 = 523 - 200 + 13",
-            "blue":   "Pista: Pide prestado de las centenas",
-            "purple": "Pista: Verifica: 336 + 187 = 523",
-        }
-    },
-    {
-        "text": "¿Cuánto es 89 + 234 + 57?",
-        "answer": 380,
-        "tolerance": 0.01,
-        "hints": {
-            "green":  "Pista: Primero suma 89+234=323",
-            "red":    "Pista: Luego 323+57=380",
-            "blue":   "Pista: Agrupa: (89+57)+234 = 146+234",
-            "purple": "Pista: Redondea: 90+234+57-1",
-        }
-    },
-    {
-        "text": "¿Cuánto es 1000 - 367?",
-        "answer": 633,
-        "tolerance": 0.01,
-        "hints": {
-            "green":  "Pista: 1000 - 367 = 999 - 367 + 1",
-            "red":    "Pista: 999-367 = 632, luego +1",
-            "blue":   "Pista: Resta por partes: 1000-300-60-7",
-            "purple": "Pista: Verifica: 633+367=1000",
-        }
-    },
-    {
-        "text": "¿Cuánto es 456 + 789?",
-        "answer": 1245,
-        "tolerance": 0.01,
-        "hints": {
-            "green":  "Pista: 6+9=15, lleva 1",
-            "red":    "Pista: 5+8+1=14, lleva 1",
-            "blue":   "Pista: 4+7+1=12",
-            "purple": "Pista: 456+800-11",
-        }
-    },
-    {
-        "text": "¿Cuánto es 2048 - 999?",
-        "answer": 1049,
-        "tolerance": 0.01,
-        "hints": {
-            "green":  "Pista: 2048-1000+1",
-            "red":    "Pista: Resta 1000 y suma 1",
-            "blue":   "Pista: 2048-999 = 2049-1000",
-            "purple": "Pista: Verifica: 1049+999=2048",
-        }
-    },
-    {
-        "text": "¿Cuánto es 375 + 625?",
-        "answer": 1000,
-        "tolerance": 0.01,
-        "hints": {
-            "green":  "Pista: Son complementos a 1000",
-            "red":    "Pista: 375 + 625 = 375 + 600 + 25",
-            "blue":   "Pista: 5+5=10, 7+2+1=10, 3+6+1=10",
-            "purple": "Pista: El resultado es un número redondo",
-        }
-    },
-    {
-        "text": "¿Cuánto es 843 - 456?",
-        "answer": 387,
-        "tolerance": 0.01,
-        "hints": {
-            "green":  "Pista: 843-456: pide prestado en unidades",
-            "red":    "Pista: 13-6=7, 13-5=8 (con préstamo), 7-4=3",
-            "blue":   "Pista: 843-400-50-6",
-            "purple": "Pista: Verifica: 387+456=843",
-        }
-    },
-    {
-        "text": "¿Cuánto es 1234 + 4321?",
-        "answer": 5555,
-        "tolerance": 0.01,
-        "hints": {
-            "green":  "Pista: 4+1=5, 3+2=5, 2+3=5, 1+4=5",
-            "red":    "Pista: Observa el patrón de las sumas",
-            "blue":   "Pista: Todos los dígitos del resultado son iguales",
-            "purple": "Pista: El resultado es un número repetitivo",
-        }
-    },
-    {
-        "text": "¿Cuánto es 5000 - 1738?",
-        "answer": 3262,
-        "tolerance": 0.01,
-        "hints": {
-            "green":  "Pista: 5000-1738 = 4999-1738+1",
-            "red":    "Pista: 4999-1738 = 3261",
-            "blue":   "Pista: Resta por partes: 5000-1700-38",
-            "purple": "Pista: Verifica: 3262+1738=5000",
-        }
-    },
-]
+# ============================================
+#  DEFINICIÓN DE PROBLEMAS POR TEMA
+# ============================================
 
+# --- DÍA 1: INTERPOLACIÓN ---
+
+INTERPOLACION_LINEAL = {
+    "day": 1,
+    "topic": "Interpolación Lineal",
+    "text": (
+        "Estimar el Ln de 3 mediante interpolación lineal.\n"
+        "- Realice el cálculo entre Ln 2 y Ln 5."
+    ),
+    "fields": [
+        {"label": "g(x)=", "answer": "0.998577424"},
+        {"label": "Є=", "answer": "0.100034865"},
+    ],
+    "hints": {
+        "green":  "Pista: Usa f(x0) + [f(x1)-f(x0)]/(x1-x0) * (x-x0)",
+        "red":    "Pista: x0=2, x1=5, f(x0)=ln(2), f(x1)=ln(5)",
+        "blue":   "Pista: ln(2)=0.6931, ln(5)=1.6094",
+        "purple": "Pista: Error = |valor real - valor aprox| / valor real",
+    },
+}
+
+LAGRANGE = {
+    "day": 1,
+    "topic": "Lagrange",
+    "text": (
+        "Obtener g(x) para x=3\n"
+        "\n"
+        "Xi    Yi\n"
+        " 1.7  0.35\n"
+        " 2.4  0.87\n"
+        " 3.1  1.03"
+    ),
+    "fields": [
+        {"label": "g(x)=", "answer": "1.072040816"},
+    ],
+    "hints": {
+        "green":  "Pista: g(x) = Σ yi * Li(x)",
+        "red":    "Pista: Li(x) = Π (x-xj)/(xi-xj) para j≠i",
+        "blue":   "Pista: Hay 3 puntos, usa L0, L1, L2",
+        "purple": "Pista: Calcula cada Li evaluado en x=3",
+    },
+}
+
+# --- DÍA 2: ECUACIONES NO LINEALES ---
+
+PUNTO_FIJO = {
+    "day": 2,
+    "topic": "Punto Fijo",
+    "text": (
+        "Localizar la raíz de f(x) = e^(-x) – x,\n"
+        "la función se puede separar directamente y\n"
+        "expresarse en la forma xi+1 = g(xi).\n"
+        "\n"
+        "X i+1 = e^(-xi) empezando con un valor\n"
+        "inicial X0 = 0. Se aplica esta ecuación\n"
+        "iterativa para calcular.\n"
+        " f(x) = e^(-x) – x"
+    ),
+    "fields": [
+        {"label": "Iteraciones=", "answer": "22"},
+        {"label": "Margen de Error(Є)=", "answer": "0.0000069328"},
+    ],
+    "hints": {
+        "green":  "Pista: Itera xi+1 = e^(-xi) desde x0=0",
+        "red":    "Pista: Calcula |xi+1 - xi| en cada paso",
+        "blue":   "Pista: Continúa hasta convergencia",
+        "purple": "Pista: La raíz está cerca de 0.5671",
+    },
+}
+
+FALSA_POSICION = {
+    "day": 2,
+    "topic": "Método de la Falsa Posición",
+    "text": (
+        "Calcule la raíz para\n"
+        "f(x)= 3x³ – 2x – 3"
+    ),
+    "fields": [
+        {"label": "Iteraciones=", "answer": "7"},
+        {"label": "Margen de Error(Є)=", "answer": "0.0016"},
+    ],
+    "hints": {
+        "green":  "Pista: Busca un intervalo [a,b] donde f cambie de signo",
+        "red":    "Pista: xr = b - f(b)*(a-b) / (f(a)-f(b))",
+        "blue":   "Pista: Evalúa f(xr) para elegir nuevo intervalo",
+        "purple": "Pista: Repite hasta que el error sea pequeño",
+    },
+}
+
+# --- DÍA 3-4: ECUACIONES LINEALES ---
+
+GAUSS_SEIDEL = {
+    "day": 3,
+    "topic": "Gauss-Seidel",
+    "text": (
+        "1) 3a – 0.1b – 0.2c = 7.85\n"
+        "2) 0.1a + 7b – 0.3c = -19.3\n"
+        "3) 0.3a – 0.2b + 10c = 71.4"
+    ),
+    "fields": [
+        {"label": "Iteración=", "answer": "4"},
+        {"label": "a=", "answer": "3.000000352"},
+        {"label": "b=", "answer": "-2.500000036"},
+        {"label": "c=", "answer": "6.999999989"},
+        {"label": "Margen de Error(Є,a)=", "answer": "0.000031545"},
+        {"label": "Margen de Error(Є,b)=", "answer": "0.000012043"},
+        {"label": "Margen de Error(Є,c)=", "answer": "0.00000070"},
+    ],
+    "hints": {
+        "green":  "Pista: Despeja a, b, c de cada ecuación",
+        "red":    "Pista: Usa los valores más recientes",
+        "blue":   "Pista: a=(7.85+0.1b+0.2c)/3",
+        "purple": "Pista: Itera hasta que el error sea pequeño",
+    },
+}
+
+JACOBI = {
+    "day": 3,
+    "topic": "Jacobi",
+    "text": (
+        "1) 3a – 0.1b – 0.2c = 7.85\n"
+        "2) 0.1a + 7b – 0.3c = -19.3\n"
+        "3) 0.3a – 0.2b + 10c = 71.4"
+    ),
+    "fields": [
+        {"label": "Iteración=", "answer": "4"},
+        {"label": "a=", "answer": "3.000015844"},
+        {"label": "b=", "answer": "-2.500001424"},
+        {"label": "c=", "answer": "6.999985592"},
+        {"label": "Margen de Error(Є,a)=", "answer": "0.000566696"},
+        {"label": "Margen de Error(Є,b)=", "answer": "0.000154825"},
+        {"label": "Margen de Error(Є,c)=", "answer": "0.00017536"},
+    ],
+    "hints": {
+        "green":  "Pista: Despeja a, b, c de cada ecuación",
+        "red":    "Pista: Usa los valores de la iteración anterior",
+        "blue":   "Pista: No uses valores actualizados como Gauss-Seidel",
+        "purple": "Pista: Itera hasta convergencia",
+    },
+}
+
+
+# ============================================
+#  SELECCIÓN DE PROBLEMAS PARA EL BÚNKER
+# ============================================
+
+def get_bunker_problems():
+    """
+    Genera la lista de 4 problemas para los 4 días del búnker.
+    - Día 1: Interpolación Lineal o Lagrange (aleatorio)
+    - Día 2: Punto Fijo o Falsa Posición (aleatorio)
+    - Día 3: Gauss-Seidel o Jacobi (aleatorio)
+    - Día 4: el método que NO se eligió en el día 3
+
+    Retorna una lista de 4 diccionarios de problemas.
+    """
+    # Día 1: Interpolación (aleatorio)
+    day1 = random.choice([INTERPOLACION_LINEAL, LAGRANGE])
+
+    # Día 2: Ecuaciones No Lineales (aleatorio)
+    day2 = random.choice([PUNTO_FIJO, FALSA_POSICION])
+
+    # Día 3 y 4: Ecuaciones Lineales (uno aleatorio, el otro el opuesto)
+    linear_methods = [GAUSS_SEIDEL, JACOBI]
+    random.shuffle(linear_methods)
+    day3 = linear_methods[0]
+    day4 = linear_methods[1]
+
+    # Asignar el día correcto a day4
+    day3_copy = dict(day3)
+    day3_copy["day"] = 3
+    day4_copy = dict(day4)
+    day4_copy["day"] = 4
+
+    return [day1, day2, day3_copy, day4_copy]
+
+
+# ============================================
+#  VALIDACIÓN DE RESPUESTAS
+# ============================================
+
+def check_field_answer(expected_str, user_str):
+    """
+    Verifica si la respuesta del usuario es correcta según las reglas:
+    - Si el valor esperado es entero (sin punto o '.0'), comparación exacta.
+    - Si es decimal, se requieren al menos los primeros 4 caracteres
+      después del punto decimal correctos.
+    - Se permiten dígitos adicionales (hasta 10 después del punto).
+    - No importa lo que haya antes del punto decimal.
+
+    Parámetros:
+        expected_str: string con la respuesta correcta (ej: "0.998577424")
+        user_str: string con la respuesta del usuario
+
+    Retorna True si es correcta.
+    """
+    if user_str is None or user_str.strip() == "":
+        return False
+
+    user_str = user_str.strip()
+    expected_str = expected_str.strip()
+
+    # --- Caso entero (ej: Iteraciones = 22, 7, 4) ---
+    if "." not in expected_str:
+        try:
+            return int(user_str) == int(expected_str)
+        except (ValueError, TypeError):
+            return False
+
+    # --- Caso decimal ---
+    # Verificar que el usuario ingresó un punto decimal
+    if "." not in user_str:
+        return False
+
+    try:
+        # Validar que sea un número válido
+        float(user_str)
+        float(expected_str)
+    except (ValueError, TypeError):
+        return False
+
+    # Extraer la parte después del punto decimal
+    expected_decimal = expected_str.split(".")[1]
+    user_decimal = user_str.split(".")[1]
+
+    # Se requieren al menos 4 caracteres después del punto
+    min_digits = min(4, len(expected_decimal))
+    if len(user_decimal) < min_digits:
+        return False
+
+    # Verificar que los primeros 4 dígitos después del punto coincidan
+    expected_prefix = expected_decimal[:min_digits]
+    user_prefix = user_decimal[:min_digits]
+
+    if expected_prefix != user_prefix:
+        return False
+
+    # Verificar el signo (positivo/negativo)
+    expected_negative = expected_str.startswith("-")
+    user_negative = user_str.startswith("-")
+    if expected_negative != user_negative:
+        return False
+
+    return True
+
+
+def check_all_fields(problem, user_answers):
+    """
+    Verifica todas las respuestas de un problema con múltiples campos.
+
+    Parámetros:
+        problem: diccionario del problema con "fields"
+        user_answers: lista de strings con las respuestas del usuario
+
+    Retorna True si TODAS las respuestas son correctas.
+    """
+    fields = problem.get("fields", [])
+    if len(user_answers) != len(fields):
+        return False
+
+    for field, user_ans in zip(fields, user_answers):
+        if not check_field_answer(field["answer"], user_ans):
+            return False
+
+    return True
+
+
+# ============================================
+#  FUNCIONES LEGACY (compatibilidad)
+# ============================================
 
 def get_random_problems(count=4):
     """
-    Selecciona 'count' problemas aleatorios sin repetición.
-    Retorna una lista de diccionarios con los problemas.
+    Función legacy — redirige a get_bunker_problems().
     """
-    selected = random.sample(PROBLEMS, min(count, len(PROBLEMS)))
-    return selected
+    return get_bunker_problems()
 
 
 def check_answer(problem, user_answer):
     """
-    Verifica si la respuesta del usuario es correcta.
-    Compara con tolerancia.
-    Retorna True si es correcta.
+    Función legacy para problemas de un solo campo.
     """
-    if user_answer is None:
-        return False
-
-    try:
-        expected = float(problem["answer"])
-        given = float(user_answer)
-        tolerance = problem.get("tolerance", 0.01)
-        return abs(expected - given) <= tolerance
-    except (ValueError, TypeError):
-        return False
+    if "fields" in problem and len(problem["fields"]) > 0:
+        # Nuevo formato: usar check_field_answer con el primer campo
+        return check_field_answer(problem["fields"][0]["answer"], str(user_answer) if user_answer is not None else "")
+    return False

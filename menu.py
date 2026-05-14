@@ -379,7 +379,7 @@ class MainMenu:
             "🎮 30 Segundos Antes de la Tragedia",
             "",
             "Creado por:",
-            "Exal Herrera y compañía",
+            "Exal Antonio Herrera Marin",
             "",
             "Institución:",
             "FIME",
