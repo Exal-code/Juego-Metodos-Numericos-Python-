@@ -10,6 +10,101 @@ import random
 
 
 # ============================================
+#  CONTENIDO FIJO DE LOS LIBROS (FÓRMULAS Y RECOMENDACIONES)
+# ============================================
+# Cada color tiene 2 libros. Cada libro contiene la fórmula y
+# recomendación de un método numérico específico.
+# Verde = Día 1 (Interpolación), Rojo = Día 2 (Ec. No Lineales),
+# Azul = Día 3 (Ec. Lineales), Morado = Día 4 (Ec. Lineales).
+# Azul y Morado tienen el MISMO contenido (días 3 y 4 son iguales).
+# Estos ejemplos son FIJOS y no cambian nunca.
+
+BOOK_EXAMPLES = {
+    "green": [
+        {
+            "titulo": "Interpolación Lineal",
+            "formula": "g(x) = f(x0) + [f(x1)-f(x0)]/(x1-x0) * (x-x0)",
+            "recomendacion": (
+                "Identifica dos puntos conocidos (x0,f(x0)) y "
+                "(x1,f(x1)), sustituye y evalúa en el valor "
+                "deseado. El error se calcula como "
+                "|valor real - valor aprox| / |valor real|."
+            ),
+        },
+        {
+            "titulo": "Lagrange",
+            "formula": "g(x) = Σ yi * Li(x), Li(x) = Π (x-xj)/(xi-xj) j≠i",
+            "recomendacion": (
+                "Calcula cada Li(x) evaluado en el punto "
+                "deseado y multiplica por su yi correspondiente. "
+                "Suma todos los términos para obtener g(x)."
+            ),
+        },
+    ],
+    "red": [
+        {
+            "titulo": "Punto Fijo",
+            "formula": "xi+1 = g(xi), despejando f(x)=0 como x=g(x)",
+            "recomendacion": (
+                "Elige una función g(x) que converja, itera "
+                "desde x0 hasta que |xi+1 - xi| sea muy pequeño. "
+                "Cuenta las iteraciones hasta convergencia."
+            ),
+        },
+        {
+            "titulo": "Falsa Posición",
+            "formula": "xr = b - f(b)*(a-b) / (f(a)-f(b))",
+            "recomendacion": (
+                "Busca un intervalo [a,b] donde f cambie de "
+                "signo, aplica la fórmula para obtener xr y "
+                "actualiza el intervalo según el signo de f(xr)."
+            ),
+        },
+    ],
+    "blue": [
+        {
+            "titulo": "Gauss-Seidel",
+            "formula": "xi(k+1) = (bi - Σ aij*xj) / aii (valores recientes)",
+            "recomendacion": (
+                "Despeja cada variable de su ecuación y usa "
+                "los valores MÁS RECIENTES conforme los calculas "
+                "en cada iteración. Itera hasta convergencia."
+            ),
+        },
+        {
+            "titulo": "Jacobi",
+            "formula": "xi(k+1) = (bi - Σ aij*xj(k)) / aii (valores anteriores)",
+            "recomendacion": (
+                "Despeja cada variable y usa SOLO los valores "
+                "de la iteración ANTERIOR para calcular la "
+                "nueva. No uses valores actualizados."
+            ),
+        },
+    ],
+    "purple": [
+        {
+            "titulo": "Gauss-Seidel",
+            "formula": "xi(k+1) = (bi - Σ aij*xj) / aii (valores recientes)",
+            "recomendacion": (
+                "Despeja cada variable de su ecuación y usa "
+                "los valores MÁS RECIENTES conforme los calculas "
+                "en cada iteración. Itera hasta convergencia."
+            ),
+        },
+        {
+            "titulo": "Jacobi",
+            "formula": "xi(k+1) = (bi - Σ aij*xj(k)) / aii (valores anteriores)",
+            "recomendacion": (
+                "Despeja cada variable y usa SOLO los valores "
+                "de la iteración ANTERIOR para calcular la "
+                "nueva. No uses valores actualizados."
+            ),
+        },
+    ],
+}
+
+
+# ============================================
 #  DEFINICIÓN DE PROBLEMAS POR TEMA
 # ============================================
 
@@ -26,12 +121,6 @@ INTERPOLACION_LINEAL = {
         {"label": "g(x)=", "answer": "0.998577424"},
         {"label": "Є=", "answer": "0.100034865"},
     ],
-    "hints": {
-        "green":  "Pista: Usa f(x0) + [f(x1)-f(x0)]/(x1-x0) * (x-x0)",
-        "red":    "Pista: x0=2, x1=5, f(x0)=ln(2), f(x1)=ln(5)",
-        "blue":   "Pista: ln(2)=0.6931, ln(5)=1.6094",
-        "purple": "Pista: Error = |valor real - valor aprox| / valor real",
-    },
 }
 
 LAGRANGE = {
@@ -48,12 +137,6 @@ LAGRANGE = {
     "fields": [
         {"label": "g(x)=", "answer": "1.072040816"},
     ],
-    "hints": {
-        "green":  "Pista: g(x) = Σ yi * Li(x)",
-        "red":    "Pista: Li(x) = Π (x-xj)/(xi-xj) para j≠i",
-        "blue":   "Pista: Hay 3 puntos, usa L0, L1, L2",
-        "purple": "Pista: Calcula cada Li evaluado en x=3",
-    },
 }
 
 # --- DÍA 2: ECUACIONES NO LINEALES ---
@@ -75,12 +158,6 @@ PUNTO_FIJO = {
         {"label": "Iteraciones=", "answer": "22"},
         {"label": "Margen de Error(Є)=", "answer": "0.0000069328"},
     ],
-    "hints": {
-        "green":  "Pista: Itera xi+1 = e^(-xi) desde x0=0",
-        "red":    "Pista: Calcula |xi+1 - xi| en cada paso",
-        "blue":   "Pista: Continúa hasta convergencia",
-        "purple": "Pista: La raíz está cerca de 0.5671",
-    },
 }
 
 FALSA_POSICION = {
@@ -94,12 +171,6 @@ FALSA_POSICION = {
         {"label": "Iteraciones=", "answer": "7"},
         {"label": "Margen de Error(Є)=", "answer": "0.0016"},
     ],
-    "hints": {
-        "green":  "Pista: Busca un intervalo [a,b] donde f cambie de signo",
-        "red":    "Pista: xr = b - f(b)*(a-b) / (f(a)-f(b))",
-        "blue":   "Pista: Evalúa f(xr) para elegir nuevo intervalo",
-        "purple": "Pista: Repite hasta que el error sea pequeño",
-    },
 }
 
 # --- DÍA 3-4: ECUACIONES LINEALES ---
@@ -121,12 +192,6 @@ GAUSS_SEIDEL = {
         {"label": "Margen de Error(Є,b)=", "answer": "0.000012043"},
         {"label": "Margen de Error(Є,c)=", "answer": "0.00000070"},
     ],
-    "hints": {
-        "green":  "Pista: Despeja a, b, c de cada ecuación",
-        "red":    "Pista: Usa los valores más recientes",
-        "blue":   "Pista: a=(7.85+0.1b+0.2c)/3",
-        "purple": "Pista: Itera hasta que el error sea pequeño",
-    },
 }
 
 JACOBI = {
@@ -146,12 +211,6 @@ JACOBI = {
         {"label": "Margen de Error(Є,b)=", "answer": "0.000154825"},
         {"label": "Margen de Error(Є,c)=", "answer": "0.00017536"},
     ],
-    "hints": {
-        "green":  "Pista: Despeja a, b, c de cada ecuación",
-        "red":    "Pista: Usa los valores de la iteración anterior",
-        "blue":   "Pista: No uses valores actualizados como Gauss-Seidel",
-        "purple": "Pista: Itera hasta convergencia",
-    },
 }
 
 

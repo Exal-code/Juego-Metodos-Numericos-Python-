@@ -21,7 +21,7 @@ from config import (
     PLAYER_HAIR, PLAYER_BACKPACK,
 )
 from entities import TextInput
-from problems import get_bunker_problems, check_field_answer, check_all_fields
+from problems import get_bunker_problems, check_field_answer, check_all_fields, BOOK_EXAMPLES
 
 
 # ============================================
@@ -45,6 +45,17 @@ class ProblemModal:
         self.finished = False
         self.result = None
         self.show_hint = None
+
+        # Selección de ejemplos de libros para esta sesión
+        # Si el jugador tiene 1 libro de un color, elige aleatoriamente
+        # cuál de los 2 ejemplos mostrar (se fija al crear el modal).
+        import random as _rnd
+        self.book_example_selection = {}
+        for color in ["green", "red", "blue", "purple"]:
+            count = books_collected.get(color, 0)
+            if count == 1:
+                self.book_example_selection[color] = _rnd.randint(0, 1)
+            # Si count == 2, se muestran ambos; si count == 0, no se muestra nada
 
         # Múltiples campos de respuesta
         self.fields = problem.get("fields", [])
@@ -140,7 +151,7 @@ class ProblemModal:
                 self._switch_field(i)
                 return
 
-        # Clic en libros (pistas)
+        # Clic en libros (ejemplos fijos)
         book_y = self.modal_rect.top + 90
         color_order = ["green", "red", "blue", "purple"]
         for i, color in enumerate(color_order):
@@ -180,6 +191,23 @@ class ProblemModal:
             self.sound_manager.play("victoria")
         else:
             self.sound_manager.play("error")
+
+    def _wrap_text(self, text, font, max_width):
+        """Divide el texto en líneas que quepan en max_width píxeles."""
+        words = text.split()
+        lines = []
+        current = ""
+        for word in words:
+            test = current + " " + word if current else word
+            if font.size(test)[0] < max_width:
+                current = test
+            else:
+                if current:
+                    lines.append(current)
+                current = word
+        if current:
+            lines.append(current)
+        return lines
 
     def draw(self, surface):
         """Dibuja el modal de problema completo."""
@@ -243,29 +271,49 @@ class ProblemModal:
                 surface.blit(name, (books_x + 33, by + 14))
                 book_idx += 1
 
-        # Mostrar pista
-        if self.show_hint and self.show_hint in self.problem.get("hints", {}):
-            hint_text = self.problem["hints"][self.show_hint]
+        # Mostrar ejemplos de libro (fórmulas y recomendaciones fijas)
+        if self.show_hint and self.show_hint in BOOK_EXAMPLES:
+            color = self.show_hint
+            count = self.books.get(color, 0)
+            examples = BOOK_EXAMPLES[color]
+
+            # Determinar qué ejemplos mostrar
+            if count >= 2:
+                examples_to_show = examples  # ambos
+            elif count == 1:
+                idx = self.book_example_selection.get(color, 0)
+                examples_to_show = [examples[idx]]
+            else:
+                examples_to_show = []
+
             hint_y = books_y + book_idx * 55 + 10
-            hint_rect = pygame.Rect(books_x, hint_y, 110, 60)
-            pygame.draw.rect(surface, (60, 60, 75), hint_rect, border_radius=5)
-            pygame.draw.rect(surface, BOOK_COLORS[self.show_hint], hint_rect, 1, border_radius=5)
-            words = hint_text.split()
-            lines_h = []
-            current_h = ""
-            for word in words:
-                test = current_h + " " + word if current_h else word
-                if self.font_small.size(test)[0] < 100:
-                    current_h = test
-                else:
-                    if current_h:
-                        lines_h.append(current_h)
-                    current_h = word
-            if current_h:
-                lines_h.append(current_h)
-            for i, line in enumerate(lines_h[:5]):
-                lt = self.font_small.render(line, True, (220, 220, 240))
-                surface.blit(lt, (books_x + 5, hint_y + 5 + i * 14))
+            for ex in examples_to_show:
+                # Panel de fondo para cada ejemplo
+                panel_h = 80
+                panel_rect = pygame.Rect(books_x, hint_y, 120, panel_h)
+                pygame.draw.rect(surface, (55, 55, 70), panel_rect, border_radius=5)
+                pygame.draw.rect(surface, BOOK_COLORS[color], panel_rect, 1, border_radius=5)
+
+                # Título del método
+                title_text = self.font_small.render(ex["titulo"], True, (255, 215, 0))
+                surface.blit(title_text, (books_x + 5, hint_y + 3))
+
+                # Fórmula (con word-wrap)
+                formula_lines = self._wrap_text(ex["formula"], self.font_small, 110)
+                fy = hint_y + 17
+                for line in formula_lines[:2]:
+                    lt = self.font_small.render(line, True, (180, 255, 180))
+                    surface.blit(lt, (books_x + 5, fy))
+                    fy += 13
+
+                # Recomendación (con word-wrap)
+                rec_lines = self._wrap_text(ex["recomendacion"], self.font_small, 110)
+                for line in rec_lines[:3]:
+                    lt = self.font_small.render(line, True, (200, 200, 220))
+                    surface.blit(lt, (books_x + 5, fy))
+                    fy += 13
+
+                hint_y += panel_h + 5
 
         # --- Contenido principal (centro-derecha) ---
         content_x = mr.left + 130
